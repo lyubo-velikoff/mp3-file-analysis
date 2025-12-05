@@ -38,3 +38,7 @@ test-results/
 tmp/
 temp/
 *.tmp
+
+# Internal planning docs
+IMPLEMENTATION_PLAN.md
+INITIAL_REQUIREMENTS.md
