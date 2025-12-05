@@ -2,6 +2,5 @@
   "framework": "nextjs",
   "installCommand": "npm install",
   "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "ignoreCommand": "git diff HEAD^ HEAD --quiet -- ui/"
+  "outputDirectory": ".next"
 }

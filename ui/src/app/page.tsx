@@ -129,7 +129,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white">
+    <div className="relative z-10 min-h-screen text-black dark:text-white">
       <main className="max-w-2xl mx-auto px-6 py-16">
         {/* Header */}
         <header className="mb-16 text-center">
