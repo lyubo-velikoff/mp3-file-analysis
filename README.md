@@ -142,6 +142,21 @@ npm run lint         # Run ESLint
 - Correctly excludes Xing/Info metadata frames from count
 - Supports VBR and CBR files
 
+## Architecture Decision: Memory-Based Parsing
+
+This implementation reads the entire MP3 file into memory before parsing, rather than using a streaming approach.
+
+**Why this approach:**
+- **Correctness**: MP3 parsing requires random access (ID3v2 at start, ID3v1 at end, sync recovery)
+- **Sync word validation**: The 11-bit sync pattern can appear in audio data; validation requires lookahead
+- **VBR support**: Variable bitrate files have unpredictable frame sizes
+
+**Trade-offs:**
+- Memory usage scales with file size (mitigated by 50MB limit)
+- Full upload required before processing begins
+
+See `api/src/services/mp3Parser.service.ts` for detailed architectural notes.
+
 ## Deployment Limitations
 
 The live API is deployed on Vercel's free tier, which has payload size limits. Large MP3 files (typically >4.5MB) will return:
@@ -152,3 +167,29 @@ FUNCTION_PAYLOAD_TOO_LARGE
 ```
 
 For larger files, run the API locally where there are no such restrictions (default limit: 50MB).
+
+## Future Improvements
+
+With additional time, the following enhancements would add value:
+
+### High Priority
+- **Streaming with disk buffering**: For files >50MB, stream to disk first, then memory-map for parsing
+- **Request timeout handling**: Add configurable timeout for long-running parse operations
+- **Rate limiting**: Per-IP rate limiting to prevent abuse in production
+- **Memory exhaustion protection**: Currently, multiple concurrent large uploads could cause OOM crashes. Add memory guards to check available heap before parsing and reject requests when memory is low. Also consider limiting concurrent uploads.
+- **Graceful degradation**: Catch Buffer allocation failures and return proper 503 "Service temporarily unavailable" instead of crashing
+
+### Medium Priority
+- **MPEG2/2.5 support**: Extend parser to handle older/lower-quality MP3 formats
+- **Detailed parse results**: Return additional metadata (duration, average bitrate, channel info)
+- **Progress reporting**: WebSocket or SSE endpoint for real-time parse progress on large files
+
+### Low Priority
+- **Batch processing**: Accept multiple files in single request
+- **Audio validation**: Verify frame audio data integrity beyond header parsing
+- **Caching layer**: Cache results for identical files (by content hash)
+
+### Testing Enhancements
+- **E2E tests**: Add Playwright tests for UI-to-API integration
+- **Performance benchmarks**: Automated performance regression tests
+- **Fuzzing**: Property-based testing with randomly generated MP3-like data

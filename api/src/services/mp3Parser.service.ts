@@ -1,3 +1,42 @@
+/**
+ * MP3 Parser Service
+ *
+ * Custom implementation for counting audio frames in MPEG Version 1 Layer 3 files.
+ *
+ * ARCHITECTURAL DECISION: Memory-based vs Streaming Approach
+ * -----------------------------------------------------------
+ * This implementation reads the entire MP3 file into memory before parsing.
+ *
+ * WHY MEMORY-BASED:
+ * 1. Correctness over complexity: MP3 frame parsing requires random access to detect
+ *    ID3v2 tags at the start, ID3v1 tags at the end, and to recover from sync loss.
+ *    Streaming implementations are significantly harder to get correct.
+ *
+ * 2. Sync word ambiguity: The 11-bit sync pattern (0xFF + 0xE0 mask) can appear
+ *    within audio data. Proper validation requires reading ahead to verify frame
+ *    structure, which complicates streaming.
+ *
+ * 3. VBR handling: Variable bitrate files have different frame sizes throughout,
+ *    making it impossible to predict where the next frame starts without parsing.
+ *
+ * TRADE-OFFS:
+ * - Memory usage: Entire file loaded into memory (mitigated by 50MB limit)
+ * - Scalability: Very large files (>RAM) cannot be processed
+ * - Latency: Must wait for full upload before processing begins
+ *
+ * ALTERNATIVE (Not implemented):
+ * A streaming approach with a sliding buffer could work but requires:
+ * - Buffering at least 2 frames to validate sync words
+ * - Handling ID3v2 extended headers that can be megabytes
+ * - Complex state machine for partial frame handling
+ * - Risk of off-by-one errors that are hard to detect
+ *
+ * For production with files >50MB, consider a hybrid approach:
+ * - Stream the file to disk first
+ * - Memory-map the file for random access
+ * - Parse using the same proven algorithm
+ */
+
 import {
   MpegVersion,
   MpegLayer,
@@ -40,6 +79,19 @@ const BITRATE_TABLE_V1_L3: readonly (number | null)[] = [
 const SAMPLE_RATE_TABLE_V1: readonly (number | null)[] = [44100, 48000, 32000, null] as const;
 
 /**
+ * MP3 Frame Structure Constants
+ * These define the byte offsets and sizes within MP3 frames
+ */
+const FRAME_HEADER_SIZE = 4; // MP3 frame header is always 4 bytes
+const CRC_SIZE = 2; // CRC-16 checksum size when protection bit is set
+const SIDE_INFO_SIZE_MONO = 17; // Side information size for mono channel
+const SIDE_INFO_SIZE_STEREO = 32; // Side information size for stereo/joint/dual channel
+const ID3V1_TAG_SIZE = 128; // ID3v1 tag is always 128 bytes at end of file
+const ID3V2_HEADER_SIZE = 10; // ID3v2 header size (marker + version + flags + size)
+const ID3V2_FOOTER_SIZE = 10; // ID3v2 footer size (only in v2.4)
+const SYNC_RECOVERY_LIMIT = 4096; // Max bytes to scan when recovering from sync loss
+
+/**
  * Decodes a synchsafe integer (used in ID3v2 tags)
  * Each byte only uses 7 bits (MSB is always 0)
  * Total: 28 bits of data in 4 bytes
@@ -64,7 +116,7 @@ function decodeSynchsafeInt(buffer: Buffer, offset: number): number {
  */
 function parseId3v2Tag(buffer: Buffer): Id3v2Tag | null {
   // Check for "ID3" marker
-  if (buffer.length < 10) {
+  if (buffer.length < ID3V2_HEADER_SIZE) {
     return null;
   }
 
@@ -86,8 +138,8 @@ function parseId3v2Tag(buffer: Buffer): Id3v2Tag | null {
   // Size is stored as synchsafe integer (excludes header)
   const size = decodeSynchsafeInt(buffer, 6);
 
-  // Total size = header (10) + size + footer (10, if present)
-  const totalSize = 10 + size + (footer ? 10 : 0);
+  // Total size = header + size + footer (if present)
+  const totalSize = ID3V2_HEADER_SIZE + size + (footer ? ID3V2_FOOTER_SIZE : 0);
 
   return {
     version: {
@@ -110,11 +162,11 @@ function parseId3v2Tag(buffer: Buffer): Id3v2Tag | null {
  * ID3v1 is always 128 bytes at the end, starting with "TAG"
  */
 function hasId3v1Tag(buffer: Buffer): boolean {
-  if (buffer.length < 128) {
+  if (buffer.length < ID3V1_TAG_SIZE) {
     return false;
   }
 
-  const tagStart = buffer.length - 128;
+  const tagStart = buffer.length - ID3V1_TAG_SIZE;
   const marker = buffer.toString('ascii', tagStart, tagStart + 3);
   return marker === 'TAG';
 }
@@ -150,7 +202,7 @@ function isValidSyncWord(buffer: Buffer, offset: number): boolean {
  * - Byte 4: Channel mode (2) + Mode ext (2) + Copyright (1) + Original (1) + Emphasis (2)
  */
 function parseFrameHeader(buffer: Buffer, offset: number): Mp3FrameHeader | null {
-  if (offset + 4 > buffer.length) {
+  if (offset + FRAME_HEADER_SIZE > buffer.length) {
     return null;
   }
 
@@ -235,28 +287,23 @@ function parseFrameHeader(buffer: Buffer, offset: number): Mp3FrameHeader | null
  */
 function isXingInfoFrame(buffer: Buffer, frameOffset: number, header: Mp3FrameHeader): boolean {
   // Calculate offset to Xing/Info header within the frame
-  // Frame header is 4 bytes, then side info, then Xing header
-  let xingOffset: number;
+  // Structure: [Frame Header (4)] + [CRC if present (2)] + [Side Info] + [Xing/Info marker (4)]
+  const sideInfoSize =
+    header.channelMode === ChannelMode.MONO ? SIDE_INFO_SIZE_MONO : SIDE_INFO_SIZE_STEREO;
 
-  if (header.channelMode === ChannelMode.MONO) {
-    // Mono: 17 bytes of side info (or 19 with CRC but we skip 2 for CRC)
-    xingOffset = frameOffset + 4 + 17;
-  } else {
-    // Stereo/Joint Stereo/Dual Channel: 32 bytes of side info
-    xingOffset = frameOffset + 4 + 32;
-  }
+  let xingOffset = frameOffset + FRAME_HEADER_SIZE + sideInfoSize;
 
-  // Adjust for CRC if present (CRC adds 2 bytes after frame header)
+  // Adjust for CRC if present (CRC comes immediately after frame header)
   if (header.hasCrc) {
-    xingOffset += 2;
+    xingOffset += CRC_SIZE;
   }
 
-  // Check if we have enough bytes to read the marker
-  if (xingOffset + 4 > buffer.length) {
+  // Check if we have enough bytes to read the 4-byte marker
+  if (xingOffset + FRAME_HEADER_SIZE > buffer.length) {
     return false;
   }
 
-  // Check for "Xing" or "Info" marker
+  // Check for "Xing" (VBR) or "Info" (CBR) marker
   const marker = buffer.toString('ascii', xingOffset, xingOffset + 4);
   return marker === 'Xing' || marker === 'Info';
 }
@@ -277,7 +324,7 @@ function findAudioStart(buffer: Buffer): number {
  */
 function findAudioEnd(buffer: Buffer): number {
   if (hasId3v1Tag(buffer)) {
-    return buffer.length - 128;
+    return buffer.length - ID3V1_TAG_SIZE;
   }
   return buffer.length;
 }
@@ -334,9 +381,9 @@ export function countMp3Frames(buffer: Buffer): Mp3ParseResult {
       } else {
         // We've been finding frames, but this one is invalid
         // This might be the end of audio data or corruption
-        // Try to find next sync word
+        // Try to find next sync word within a reasonable range
         let found = false;
-        for (let i = position + 1; i < Math.min(position + 4096, audioEnd); i++) {
+        for (let i = position + 1; i < Math.min(position + SYNC_RECOVERY_LIMIT, audioEnd); i++) {
           if (isValidSyncWord(buffer, i)) {
             const nextHeader = parseFrameHeader(buffer, i);
             if (nextHeader) {
@@ -371,7 +418,7 @@ export function countMp3Frames(buffer: Buffer): Mp3ParseResult {
  * Checks for common MP3 signatures
  */
 export function validateMp3Buffer(buffer: Buffer): void {
-  if (buffer.length < 10) {
+  if (buffer.length < ID3V2_HEADER_SIZE) {
     throw new InvalidMp3Error('File too small to be a valid MP3');
   }
 
@@ -382,7 +429,7 @@ export function validateMp3Buffer(buffer: Buffer): void {
   if (!hasId3v2 && !hasFrameSync) {
     // Try to find a frame sync in the first few KB
     let foundSync = false;
-    for (let i = 0; i < Math.min(buffer.length, 4096); i++) {
+    for (let i = 0; i < Math.min(buffer.length, SYNC_RECOVERY_LIMIT); i++) {
       if (isValidSyncWord(buffer, i)) {
         const header = parseFrameHeader(buffer, i);
         if (header) {
