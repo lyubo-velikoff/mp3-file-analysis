@@ -48,7 +48,7 @@ describe('MP3 Parser Service', () => {
     });
 
     it('should parse ID3v2 tag from sample file', () => {
-      const filePath = path.join(DATA_DIR, 'sample (2).mp3');
+      const filePath = path.join(DATA_DIR, 'sample.mp3');
       const buffer = fs.readFileSync(filePath);
       const tag = parseId3v2Tag(buffer);
 
@@ -81,7 +81,7 @@ describe('MP3 Parser Service', () => {
     });
 
     it('should return false for buffer without ID3v1 tag', () => {
-      const filePath = path.join(DATA_DIR, 'sample (2).mp3');
+      const filePath = path.join(DATA_DIR, 'sample.mp3');
       const buffer = fs.readFileSync(filePath);
       expect(hasId3v1Tag(buffer)).toBe(false);
     });
@@ -185,7 +185,7 @@ describe('MP3 Parser Service', () => {
 
   describe('countMp3Frames', () => {
     it('should count frames correctly for sample file', () => {
-      const filePath = path.join(DATA_DIR, 'sample (2).mp3');
+      const filePath = path.join(DATA_DIR, 'sample.mp3');
       const buffer = fs.readFileSync(filePath);
       const result = countMp3Frames(buffer);
 
@@ -238,7 +238,7 @@ describe('MP3 Parser Service', () => {
 
   describe('validateMp3Buffer', () => {
     it('should not throw for valid MP3 file', () => {
-      const filePath = path.join(DATA_DIR, 'sample (2).mp3');
+      const filePath = path.join(DATA_DIR, 'sample.mp3');
       const buffer = fs.readFileSync(filePath);
 
       expect(() => validateMp3Buffer(buffer)).not.toThrow();

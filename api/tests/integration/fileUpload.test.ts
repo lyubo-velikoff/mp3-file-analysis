@@ -20,7 +20,7 @@ describe('POST /file-upload', () => {
     it('should return correct frame count for sample file', async () => {
       const response = await request(app)
         .post('/file-upload')
-        .attach('file', path.join(DATA_DIR, 'sample (2).mp3'));
+        .attach('file', path.join(DATA_DIR, 'sample.mp3'));
 
       expect(response.status).toBe(200);
       expect(response.headers['content-type']).toMatch(/application\/json/);
