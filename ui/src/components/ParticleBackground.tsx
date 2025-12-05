@@ -63,8 +63,9 @@ export default function ParticleBackground() {
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       const mobile = isMobile();
+      const connectionDistance = mobile ? 80 : 120;
 
-      particlesRef.current.forEach((particle) => {
+      particlesRef.current.forEach((particle, i) => {
         // Mouse interaction (desktop only)
         if (!mobile) {
           const dx = mouseRef.current.x - particle.x;
@@ -95,9 +96,27 @@ export default function ParticleBackground() {
           particle.y = particle.y <= 0 ? 0 : canvas.height;
         }
 
-        // Draw particle
+        // Draw connections (spider web effect)
+        for (let j = i + 1; j < particlesRef.current.length; j++) {
+          const other = particlesRef.current[j];
+          const dx = particle.x - other.x;
+          const dy = particle.y - other.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance < connectionDistance) {
+            const opacity = (1 - distance / connectionDistance) * 0.3;
+            ctx.beginPath();
+            ctx.moveTo(particle.x, particle.y);
+            ctx.lineTo(other.x, other.y);
+            ctx.strokeStyle = `rgba(128, 128, 128, ${opacity})`;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+        }
+
+        // Draw particle (smaller dots for web effect)
         ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.arc(particle.x, particle.y, particle.size * 0.5, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(128, 128, 128, " + particle.opacity + ")";
         ctx.fill();
       });
