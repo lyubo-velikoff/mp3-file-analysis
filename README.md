@@ -2,7 +2,15 @@
 
 A REST API that counts audio frames in MP3 files. Built with TypeScript and Express.js, with custom MP3 parsing.
 
-## Quick Start
+**Live API:** https://api-ochre-rho-50.vercel.app
+
+## Try It
+
+```bash
+curl -X POST -F "file=@your-file.mp3" https://api-ochre-rho-50.vercel.app/file-upload
+```
+
+## Local Development
 
 ```bash
 # Install dependencies
