@@ -22,11 +22,14 @@ app.use(notFoundHandler);
 // Error handler (must be last)
 app.use(errorHandler);
 
-// Start server
-app.listen(config.port, () => {
-  console.info(`MP3 Analysis API running on port ${config.port}`);
-  console.info(`Environment: ${config.nodeEnv}`);
-  console.info(`Max file size: ${config.maxFileSize} bytes`);
-});
+// Start server only when not running on Vercel
+if (!process.env.VERCEL) {
+  app.listen(config.port, () => {
+    console.info(`MP3 Analysis API running on port ${config.port}`);
+    console.info(`Environment: ${config.nodeEnv}`);
+    console.info(`Max file size: ${config.maxFileSize} bytes`);
+  });
+}
 
+// Export for Vercel serverless
 export default app;
