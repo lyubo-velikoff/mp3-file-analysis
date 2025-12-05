@@ -3,6 +3,7 @@ import * as path from 'path';
 import express from 'express';
 import fileUploadRoute from '../../src/routes/fileUpload.route';
 import { errorHandler, notFoundHandler } from '../../src/middleware/errorHandler';
+import { FrameCountResponse, ErrorResponse } from '../../src/types/mp3.types';
 
 // Create test app
 const app = express();
@@ -60,7 +61,7 @@ describe('POST /file-upload', () => {
 
       expect(response.status).toBe(400);
       expect(response.body).toHaveProperty('error');
-      expect(response.body.error).toContain('No file uploaded');
+      expect((response.body as ErrorResponse).error).toContain('No file uploaded');
     });
 
     it('should return 400 for invalid file type', async () => {
@@ -132,15 +133,15 @@ describe('POST /file-upload', () => {
         .post('/file-upload')
         .attach('file', path.join(DATA_DIR, 'test-mono.mp3'));
 
-      expect(Object.keys(response.body)).toEqual(['frameCount']);
-      expect(typeof response.body.frameCount).toBe('number');
+      expect(Object.keys(response.body as FrameCountResponse)).toEqual(['frameCount']);
+      expect(typeof (response.body as FrameCountResponse).frameCount).toBe('number');
     });
 
     it('should return error property on failure', async () => {
       const response = await request(app).post('/file-upload');
 
       expect(response.body).toHaveProperty('error');
-      expect(typeof response.body.error).toBe('string');
+      expect(typeof (response.body as ErrorResponse).error).toBe('string');
     });
   });
 });

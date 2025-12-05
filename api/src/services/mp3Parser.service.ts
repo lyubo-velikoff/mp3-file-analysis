@@ -6,7 +6,7 @@ import {
   Id3v2Tag,
   Mp3ParseResult,
 } from '../types/mp3.types';
-import { InvalidMp3Error, UnsupportedFormatError } from '../errors/AppError';
+import { InvalidMp3Error } from '../errors/AppError';
 
 /**
  * Bitrate table for MPEG Version 1, Layer 3
