@@ -79,6 +79,7 @@ Sample MP3 files in `data/`:
 | test-cbr-no-tags.mp3 | 193 |
 | test-vbr-with-tags.mp3 | 116 |
 | test-mono.mp3 | 78 |
+| we-are-the-dreamers.mp3 | 8340 |
 
 Frame counts verified with `mediainfo`.
 
@@ -119,3 +120,14 @@ npm run lint         # Run ESLint
 - Handles ID3v2 and ID3v1 tags
 - Correctly excludes Xing/Info metadata frames from count
 - Supports VBR and CBR files
+
+## Deployment Limitations
+
+The live API is deployed on Vercel's free tier, which has payload size limits. Large MP3 files (typically >4.5MB) will return:
+
+```
+Request Entity Too Large
+FUNCTION_PAYLOAD_TOO_LARGE
+```
+
+For larger files, run the API locally where there are no such restrictions (default limit: 50MB).
