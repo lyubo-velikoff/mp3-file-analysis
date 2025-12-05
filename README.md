@@ -1,27 +1,30 @@
-# MP3 File Analysis API
+# MP3 File Analysis
 
-A REST API that counts audio frames in MP3 files. Built with TypeScript and Express.js, with custom MP3 parsing.
+A REST API that counts audio frames in MP3 files, with a web UI. Built with TypeScript, Express.js, and Next.js, featuring custom MP3 parsing.
 
-**Live API:** https://api-ochre-rho-50.vercel.app
+**Live UI:** https://mp3-analyzer-ui.vercel.app
+
+**Live API:** https://mp3-file-analysis.vercel.app
 
 ## Try It
 
 ```bash
-curl -X POST -F "file=@your-file.mp3" https://api-ochre-rho-50.vercel.app/file-upload
+curl -X POST -F "file=@your-file.mp3" https://mp3-file-analysis.vercel.app/file-upload
 ```
 
 ## Local Development
 
 ```bash
-# Install dependencies
+# API (runs on port 3001)
 cd api
 npm install
+npm run dev
 
-# Start the server
+# UI (runs on port 3000)
+cd ui
+npm install
 npm run dev
 ```
-
-Server runs at `http://localhost:3000`
 
 ## API Usage
 
@@ -31,7 +34,7 @@ Upload an MP3 file to get the frame count.
 
 ```bash
 # Using the provided sample file
-curl -X POST -F "file=@data/sample.mp3" http://localhost:3000/file-upload
+curl -X POST -F "file=@data/sample.mp3" http://localhost:3001/file-upload
 ```
 
 **Response:**
@@ -72,7 +75,7 @@ Frame counts verified with `mediainfo`.
 
 ```
 mp3-file-analysis/
-├── api/
+├── api/                          # Express.js API
 │   ├── src/
 │   │   ├── index.ts              # Express server
 │   │   ├── routes/               # API endpoints
@@ -81,6 +84,8 @@ mp3-file-analysis/
 │   │   ├── middleware/           # Error handling
 │   │   └── errors/               # Custom error classes
 │   └── tests/                    # Unit & integration tests
+├── ui/                           # Next.js frontend
+│   └── src/app/                  # App router pages
 ├── data/                         # Sample MP3 files
 └── README.md
 ```

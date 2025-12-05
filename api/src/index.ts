@@ -5,6 +5,18 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 const app = express();
 
+// CORS middleware
+app.use((_req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  if (_req.method === 'OPTIONS') {
+    res.sendStatus(200);
+    return;
+  }
+  next();
+});
+
 // Parse JSON bodies (for potential future endpoints)
 app.use(express.json());
 

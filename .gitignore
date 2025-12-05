@@ -42,3 +42,5 @@ temp/
 # Internal planning docs
 IMPLEMENTATION_PLAN.md
 INITIAL_REQUIREMENTS.md
+.vercel
+CLAUDE.md
