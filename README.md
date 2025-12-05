@@ -53,9 +53,20 @@ curl -X POST -F "file=@data/sample.mp3" http://localhost:3001/file-upload
 
 ## Testing
 
+### API Tests
+
 ```bash
 cd api
 npm test
+```
+
+### UI Tests
+
+```bash
+cd ui
+npm test              # Run all tests
+npm run test:watch    # Run tests in watch mode
+npm run test:coverage # Run tests with coverage report
 ```
 
 ### Test Files
@@ -85,7 +96,9 @@ mp3-file-analysis/
 │   │   └── errors/               # Custom error classes
 │   └── tests/                    # Unit & integration tests
 ├── ui/                           # Next.js frontend
-│   └── src/app/                  # App router pages
+│   ├── src/app/                  # App router pages
+│   ├── src/components/           # React components
+│   └── src/__tests__/            # Unit tests
 ├── data/                         # Sample MP3 files
 └── README.md
 ```
