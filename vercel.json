@@ -16,6 +16,5 @@
         "Access-Control-Allow-Headers": "Content-Type"
       }
     }
-  ],
-  "ignoreCommand": "git diff HEAD^ HEAD --quiet -- api/ vercel.json"
+  ]
 }
