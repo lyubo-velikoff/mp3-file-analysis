@@ -83,6 +83,27 @@ Sample MP3 files in `data/`:
 
 Frame counts verified with `mediainfo`.
 
+### Verifying Frame Counts
+
+Install mediainfo to verify frame counts:
+
+```bash
+# macOS
+brew install mediainfo
+
+# Ubuntu/Debian
+sudo apt-get install mediainfo
+
+# Windows (via Chocolatey)
+choco install mediainfo-cli
+```
+
+Check frame count of any MP3 file:
+
+```bash
+mediainfo --Inform="Audio;%FrameCount%" path/to/file.mp3
+```
+
 ## Project Structure
 
 ```
