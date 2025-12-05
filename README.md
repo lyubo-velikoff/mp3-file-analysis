@@ -1,6 +1,6 @@
 # MP3 File Analysis API
 
-A REST API that counts audio frames in MP3 files. Built with TypeScript and Express.js, with custom MP3 parsing (no external parsing libraries).
+A REST API that counts audio frames in MP3 files. Built with TypeScript and Express.js, with custom MP3 parsing.
 
 ## Quick Start
 
